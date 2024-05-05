@@ -7,27 +7,19 @@
 #include <iostream> // for cout, endl, and cin
 #include <sstream> // for stringstream (used for parsing simulated programs)
 
-#ifdef _WIN32
-#include <synchapi.h>
-#else
 #include <sys/wait.h> // for wait()
-#endif
 
 #include <unistd.h> // for pipe(), read(), write(), close(), fork(),  and _exit()
 #include <vector> // for vector (used for PCB table)
 
-using namespace std;
-
-class Instruction {
-public:
+struct Instruction {
     char operation;
     int intArg;
-    string stringArg;
+    char stringArg[255]; // Assuming a maximum string length of 255 characters
 };
 
-class Cpu {
-public:
-    vector<Instruction> *pProgram;
+struct Cpu {
+    struct Instruction *pProgram;
     int programCounter;
     int value;
     int timeSlice;
@@ -40,84 +32,21 @@ enum State {
     STATE_BLOCKED
 };
 
-class PcbEntry {
-public:
+struct PcbEntry {
     int processId;
     int parentProcessId;
-    vector<Instruction> program;
+    struct Instruction program;
     unsigned int programCounter;
     int value;
     unsigned int priority;
-    State state;
+    enum State state;
     unsigned int startTime;
     unsigned int timeUsed;
 };
 
-// Source used: https://www.geeksforgeeks.org/remove-extra-spaces-string/
-string trim(string &str)
-{
-    // n is length of the original string
-    int n = str.length();
- 
-    // i points to next position to be filled in
-    // output string/ j points to next character
-    // in the original string
-    int i = 0, j = -1;
- 
-    // flag that sets to true is space is found
-    bool spaceFound = false;
- 
-    // Handles leading spaces
-    while (++j < n && str[j] == ' ');
- 
-    // read all characters of original string
-    while (j < n)
-    {
-        // if current characters is non-space
-        if (str[j] != ' ')
-        {
-            // remove preceding spaces before dot,
-            // comma & question mark
-            if ((str[j] == '.' || str[j] == ',' ||
-                 str[j] == '?') && i - 1 >= 0 &&
-                 str[i - 1] == ' ')
-                str[i - 1] = str[j++];
- 
-            else
-                // copy current character at index i
-                // and increment both i and j
-                str[i++] = str[j++];
- 
-            // set space flag to false when any
-            // non-space character is found
-            spaceFound = false;
-        }
-        // if current character is a space
-        else if (str[j++] == ' ')
-        {
-            // If space is encountered for the first
-            // time after a word, put one space in the
-            // output and set space flag to true
-            if (!spaceFound)
-            {
-                str[i++] = ' ';
-                spaceFound = true;
-            }
-        }
-    }
- 
-    // Remove trailing spaces
-    if (i <= 1)
-        str.erase(str.begin() + i, str.end());
-    else
-        str.erase(str.begin() + i - 1, str.end());
-
-    return str;
-}
-
-PcbEntry pcbEntry[10];
+struct PcbEntry pcbEntry[10];
 unsigned int timestamp = 0;
-Cpu cpu;
+struct Cpu cpu;
 
 // For the states below, -1 indicates empty (since it is an invalid index).
 int runningState = -1;
@@ -229,36 +158,28 @@ void decrement(int value)
 void schedule()
 {
     // TODO: Implement
-    // 1. Return if there is still a processing running (runningState != -1). There is no need to schedule if a process is already running (at least until iLab 3)
+    // (Done) 1. Return if there is still a processing running (runningState != -1). There is no need to schedule if a process is already running (at least until iLab 3)
     // 2. Get a new process to run, if possible, from the ready queue.
     // 3. If we were able to get a new process to run:
     //     a. Mark the processing as running (update the new process's PCB state)
     //     b. Update the CPU structure with the PCB entry details (program, program counter, value, etc.)
 
-    // 1. Return if there is still a processing running (runningState != -1). There is no need to schedule if a process is already running (at least until iLab 3)
     if (runningState != -1) {
         return;
     }
 
-    // 2. Get a new process to run, if possible, from the ready queue.
-    if (!readyState.empty()) {
-        int newProcessId = readyState.front();
-        readyState.pop_front();
+    // Get a new process to run from the ready queue, if available
+    pcbEntry* newProcess = getProcessFromReadyQueue(); // You need to implement this function
 
-        // 3. If we were able to get a new process to run:
-        if (newProcessId >= 0) {
-            PcbEntry& newProcess = pcbEntry[newProcessId];
+    // If we were able to get a new process to run
+    if (newProcess != nullptr) {
+        // Mark the process as running
+        runningState = newProcess->pid; // Assuming runningState is the process ID of the currently running process
 
-            //     a. Mark the process as running (update the new process's PCB state)
-            newProcess.state = STATE_RUNNING;
-
-            //     b. Update the CPU structure with the PCB entry details
-            cpu.pProgram = &newProcess.program;
-            cpu.programCounter = newProcess.programCounter;
-            cpu.value = newProcess.value;
-
-            runningState = newProcessId;
-        }
+        // Update the CPU structure with the PCB entry details
+        cpu.pProgram = newProcess->program;
+        cpu.programCounter = newProcess->programCounter;
+        cpu.value = newProcess->value;
     }
 }
 
@@ -272,28 +193,6 @@ void block()
     //     b. Store the CPU program counter in the PCB's program counter.
     //     c. Store the CPU's value in the PCB's value.
     // 3. Update the running state to -1 (basically mark no process as running). Note that a new process will be chosen to run later (via the Q command code calling the schedule() function).
-
-    // 1. Add the PCB index of the running process (stored in runningState) to the blocked queue.
-    if (runningState != -1) {
-        blockedState.push_back(runningState);
-
-        // 2. Update the process's PCB entry
-        if (runningState >= 0) {
-            PcbEntry& runningProcess = pcbEntry[runningState];
-
-            //     a. Change the PCB's state to blocked.
-            runningProcess.state = STATE_BLOCKED;
-
-            //     b. Store the CPU program counter in the PCB's program counter.
-            runningProcess.programCounter = cpu.programCounter;
-
-            //     c. Store the CPU's value in the PCB's value.
-            runningProcess.value = cpu.value;
-        }
-
-        // 3. Update the running state to -1
-        runningState = -1;
-    }
 }
 
 // Implements the E operation.
@@ -304,23 +203,7 @@ void end()
     // 2. Update the cumulative time difference (increment it by timestamp + 1 - start time of the process).
     // 3. Increment the number of terminated processes.
     // 4. Update the running state to -1 (basically mark no process as running). Note that a new process will be chosen to run later (via the Q command code calling the schedule function).
-
-    // 1. Get the PCB entry of the running process.
-    if (runningState != -1 && runningState >= 0) {
-        PcbEntry& runningProcess = pcbEntry[runningState];
-
-        // 2. Update the cumulative time difference
-        cumulativeTimeDiff += timestamp + 1 - runningProcess.startTime;
-
-        // 3. Increment the number of terminated processes.
-        numTerminatedProcesses++;
-
-        // 4. Update the running state to -1
-        runningState = -1;
-    }
 }
-
-vector<PcbEntry> pcbTable; // Used for the following requirement below:
 
 // Implements the F operation.
 void fork(int value)
@@ -339,76 +222,18 @@ void fork(int value)
     //     g. Set the start time to the current timestamp
     // 5. Add the pcb index to the ready queue.
     // 6. Increment the cpu's program counter by the value read in #3
-
-    // 1. Get a free PCB index (pcbTable.size())
-    int newProcessId = pcbTable.size();
-
-    // 2. Get the PCB entry for the current running process.
-    if (runningState != -1 && runningState >= 0) {
-        PcbEntry& parentProcess = pcbEntry[runningState];
-
-        // 3. Ensure the passed-in value is not out of bounds.
-        if (value < 0 || value >= parentProcess.program.size()) {
-            cout << "Error: Invalid fork value." << endl;
-            return;
-        }
-
-        // 4. Populate the PCB entry obtained in #1
-        PcbEntry newProcess;
-
-        //     a. Set the process ID to the PCB index obtained in #1.
-        newProcess.processId = newProcessId;
-
-        //     b. Set the parent process ID to the process ID of the running process.
-        newProcess.parentProcessId = parentProcess.processId;
-
-        //     c. Set the program counter to the CPU program counter.
-        newProcess.programCounter = cpu.programCounter;
-
-        //     d. Set the value to the CPU value.
-        newProcess.value = cpu.value;
-
-        //     e. Set the priority to the same as the parent process's priority.
-        newProcess.priority = parentProcess.priority;
-
-        //     f. Set the state to the ready state.
-        newProcess.state = STATE_READY;
-
-        //     g. Set the start time to the current timestamp.
-        newProcess.startTime = timestamp;
-
-        // 5. Add the PCB index to the ready queue.
-        readyState.push_back(newProcessId);
-
-        // 6. Increment the CPU's program counter by the value read in #3
-        cpu.programCounter += value;
-        pcbTable.push_back(newProcess);
-    }
 }
 
 // Implements the R operation.
 void replace(string &argument)
 {
     // TODO: Implement
-    // 1. Clear the CPU's program (cpu.pProgram->clear()).
+    // 1. (Done) Clear the CPU's program (cpu.pProgram->clear()).
     // 2. Use createProgram() to read in the filename specified by argument into the CPU (*cpu.pProgram)
     //     a. Consider what to do if createProgram fails. I printed an error, incremented the cpu program counter and then returned. Note that createProgram can fail if the file could not be opened or did not exist.
     // 3. Set the program counter to 0.
 
-    // 1. Clear the CPU's program
     cpu.pProgram->clear();
-
-    // 2. Use createProgram() to read in the filename specified by argument into the CPU (*cpu.pProgram)
-    if (!createProgram(argument, *cpu.pProgram)) {
-        //     a. Handle the case if createProgram fails
-        cout << "Error: Failed to load program from file " << argument << endl;
-        // Increment the CPU program counter and then return
-        cpu.programCounter++;
-        return;
-    }
-
-    // 3. Set the program counter to 0
-    cpu.programCounter = 0;
 }
 
 // Implements the Q command.
@@ -475,25 +300,6 @@ void unblock()
     //      b. Add the process to the ready queue.
     //      c. Change the state of the process to ready (update its PCB entry).
     // 2. Call the schedule() function to give an unblocked process a chance to run (if possible).
-
-    // 1. If the blocked queue contains any processes:
-    if (!blockedState.empty()) {
-        //      a. Remove a process from the front of the blocked queue.
-        int unblockedProcessId = blockedState.front();
-        blockedState.pop_front();
-
-        //      b. Add the process to the ready queue.
-        readyState.push_back(unblockedProcessId);
-
-        //      c. Change the state of the process to ready (update its PCB entry).
-        if (unblockedProcessId >= 0) {
-            PcbEntry& unblockedProcess = pcbEntry[unblockedProcessId];
-            unblockedProcess.state = STATE_READY;
-        }
-    }
-
-    // 2. Call the schedule() function to give an unblocked process a chance to run (if possible).
-    schedule();
 }
 
 // Implements the P command.
@@ -613,8 +419,7 @@ int main(int argc, char *argv[])
         
         // Wait for the process manager to exit.
         // WaitForSingleObject(&result);
-        sleep(result);
-        // wait(&result); // original line
+        wait(&result); // original line
     }
     
     return result;
