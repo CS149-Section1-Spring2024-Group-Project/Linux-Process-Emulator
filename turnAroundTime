@@ -1,0 +1,179 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <time.h>
+
+#define MAX_PROCESSES 1000
+#define MAX_INSTRUCTIONS 100
+#define MAX_FILE_NAME_LENGTH 100
+
+enum types{
+    SET, ADD, SUBTRACT, BLOCK, TERMINATE, FORK, REPLACE
+};
+
+struct PCB{
+    int process_id;
+    int parent_process_id;
+    int *program_counter;
+    int integer_value;
+    int priority;
+    int state;
+    clock_t start_time, end;
+    int cpu_time_used;
+    int turn_around_time;
+};
+
+struct CPU{
+    int *program;
+    int program_counter;
+    int integer_value;
+    int time_slice;
+    int time_units_used;
+};
+
+
+//global variables
+int Time = 0;
+struct CPU cpu;
+struct PCB pcbTable[MAX_PROCESSES];
+int readyState[MAX_PROCESSES];
+int blockedState[MAX_PROCESSES];
+int runningState;
+
+
+//functions
+void execute_instruction(struct Instruction instruct);
+void create_process(char *filename, int parent_id);
+void replace_program(char *filename);
+void block_process();
+void terminate_process();
+void fork_process(int num);
+void report();
+void startTime(int pid);
+void endTime(int pid);
+double get_turn_around_time(int pid);
+
+int main(){
+    init_process_manager();
+
+^S    create_process("init", -1);
+
+    while(1){
+        execute_instruction(struct Instruction){
+            .type = cpu.program[cpu.program_counter],
+            .value = cpu.program[cpu.program_counter+1],
+            .filename = ""
+        };
+
+        cpu.program_counter += 2;
+
+        cpu.time_units_used++;
+        if (cpu.time_units_used > cpu.time_slice){
+            // Context switch
+            if (runningState != -1) {
+                readyState[runningState] = 1;
+            }
+            runningState = -1;
+            break;
+        }
+    }
+    return 0;
+}
+
+void startTime(int pid)
+{
+        pcbTable[pid].start_time = clock();
+}
+void endTime(int pid)
+{
+        pcbTable[pid].end = clock();
+}
+
+double get_turn_around_time(int pid)
+{
+        return ((double)(pcbTable[pid].start_time - pcbTable[pid].end))/CLOCKS_PER_SEC;
+}
+
+void execute_instruction(struct Instruction instruct){
+    switch (instr.type){
+        case SET:
+            cpu.integer_value = instruct.value;
+            break;
+        case ADD
+            cpu.integer_value += instruct.value;
+            break;
+        case SUBTRACT:
+            cpu.integer_value -= instruct.value;
+            break;
+        case BLOCK:
+            block_process();
+            break;
+        case TERMINATE:
+            terminate_process();
+            break;
+        case FORK:
+            fork_process(instr.value);
+            break;
+        case REPLACE:
+            replace_program(instr.value);
+            break;
+    }
+}
+
+void create_process(char *filename, int parent_id){
+
+
+    FILE *file = fopen(filename,"r");
+    if (file == NULL){
+        perror("Error opening file");
+        exit(EXIT_FAILURE);
+    }
+
+    int program[MAX_INSTRUCTIONS];
+    int i = 0;
+    while (fscanf(file, "%d", &program[i]) != EOF) {
+        i++;
+    }
+    fclose(file);
+
+    pcbTable[runningState].program_counter = program;
+    cpu.program = program;
+    cpu.program_counter = 0;
+}
+
+void block_process(){
+    blockedState[runningState] = 1;
+    runningState = -1;
+}
+
+void terminate_process(){
+    pcbTable[runningState].state = -1;
+    runningState = -1;
+}
+
+void init_process_manager(){
+    cpu.program = null;
+    cpu.program_counter = 0;
+    cpu.integer_value = 0;
+    cpu.time_slice = 10;
+    cpu.time_units_used = 0;
+
+     for (int i = 0; i < MAX_PROCESSES; i++) {
+        pcbTable[i].state = -1; // -1 represents unused entry
+    }
+
+    memset(readyState, 0, sizeof(readyState));
+    memset(blockedState, 0, sizeof(blockedState));
+    runningState = -1;
+}
+
+void report() {
+    printf("Process ID\tParent ID\tInteger Value\n");
+    printf("-------------------------------------------\n");
+    for (int i = 0; i < MAX_PROCESSES; i++) {
+        if (pcbTable[i].state != -1) {
+            printf("%d\t\t%d\t\t%d\n", pcbTable[i].process_id, pcbTable[i].parent_process_id, pcbTable[i].integer_value);
+        }
+    }
+}
+~                                   
