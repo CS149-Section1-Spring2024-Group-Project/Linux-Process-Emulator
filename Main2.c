@@ -3,8 +3,13 @@
 #include <string.h>
 #include <stdbool.h>
 #include <ctype.h>
-#include <unistd.h>
-#include <sys/wait.h>
+#include <unistd.h> // for pipe(), read(), write(), close(), fork(),  and _exit()
+
+#ifdef _WIN32
+#include <synchapi.h>
+#else
+#include <sys/wait.h> // for wait()
+#endif
 
 enum State {
     STATE_RUNNING,
@@ -308,5 +313,3 @@ int main(int argc, char *argv[]) {
     }
     return result;
 }
-message.txt
-9 KB
