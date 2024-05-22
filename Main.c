@@ -49,15 +49,17 @@ int runProcessManager(int fileDescriptor)
         //TODO: Write a switch statement
         switch (userInput) {
             case 'Q': 
-                // quantum();
+                quantum();
                 printf("Option Q selected\n");
                 break;
 
             case 'U':
+                unblock();
                 printf("Option U selected\n");
                 break;
 
             case 'P':
+                print();
                 printf("Option P selected\n");
                 break;
 
@@ -213,6 +215,49 @@ void quantum() {
     schedule();
 }
 
+
+void unblock() {
+     if (blockedStateSize > 0) {
+        int pcbIndex = blockedState[0];
+        for (int i = 1; i < blockedStateSize; ++i) {
+            blockedState[i - 1] = blockedState[i];
+        }
+        --blockedStateSize;
+        readyState[readyStateSize++] = pcbIndex;
+        pcbEntry[pcbIndex].state = STATE_READY;
+    }
+    schedule();
+}
+
+void print() {
+    printf("______________________________________________________________\n");
+    printf("The current system state is as follows:\n");
+    printf("______________________________________________________________\n");
+    printf("Time: %d\n", timestamp);
+    printf("Running Process: %d\n", runningState);
+    
+    printf("Ready Queue: ");
+    for (int i = 0; i < readyStateSize; i++) {
+        printf("%d ", readyState[i]);
+    }
+    printf("\n");
+    
+    printf("Blocked Queue: ");
+    for (int i = 0; i < blockedStateSize; i++) {
+        printf("%d ", blockedState[i]);
+    }
+    printf("\n");
+    
+    for (int i = 0; i < 10; i++) {
+        if (pcbEntry[i].processId != -1) {
+            printf("Process %d: Value = %d, PC = %d, Priority = %d, State = %d, Start Time = %d, CPU Time = %d\n",
+                   pcbEntry[i].processId, pcbEntry[i].value, pcbEntry[i].programCounter,
+                   pcbEntry[i].priority, pcbEntry[i].state, pcbEntry[i].startTime,
+                   pcbEntry[i].timeUsed);
+        }
+    }
+    printf("\n");
+}
 
 int main(int argc, char* argv[]){
 
