@@ -73,6 +73,147 @@ int runProcessManager(int fileDescriptor)
     return EXIT_SUCCESS;
 }
 
+
+
+typedef struct {
+    char operation;
+    int intArg;
+    char stringArg[50];
+} Instruction;
+
+typedef struct {
+    int processId;
+    int value;
+    int programCounter;
+    int priority;
+    int state;
+    int startTime;
+    int timeUsed;
+} PCBEntry;
+
+Instruction program[100];
+PCBEntry pcbEntry[10];
+int runningState = -1;
+int timestamp = 0;
+int programSize = 0;
+
+struct {
+    int programCounter;
+    Instruction *pProgram;
+} cpu;
+
+int readyState[100];
+int readyStateSize = 0;
+int blockedState[100];
+int blockedStateSize = 0;
+
+void set(int arg) {
+    if (runningState != -1) {
+        pcbEntry[runningState].value = arg;
+    }
+}
+
+void add(int arg) {
+    if (runningState != -1) {
+        pcbEntry[runningState].value += arg;
+    }
+}
+
+void decrement(int arg) {
+    if (runningState != -1) {
+        pcbEntry[runningState].value -= arg;
+    }
+}
+
+void block() {
+    if (runningState != -1) {
+        pcbEntry[runningState].state = STATE_BLOCKED;
+        blockedState[blockedStateSize++] = runningState;
+        runningState = -1;
+    }
+}
+
+void end() {
+    if (runningState != -1) {
+        pcbEntry[runningState].state = STATE_TERMINATED;
+        runningState = -1;
+    }
+}
+
+void fork(int arg) {
+    for (int i = 0; i < 10; ++i) {
+        if (pcbEntry[i].processId == -1) {  // Find an empty PCB entry
+            pcbEntry[i] = pcbEntry[runningState];  // Copy current process
+            pcbEntry[i].processId = i;  // Assign new process ID
+            pcbEntry[i].programCounter += arg;  // Modify PC as per fork logic
+            readyState[readyStateSize++] = i;  // Add to ready queue
+            break;
+        }
+    }
+}
+
+void replace(char* arg) {
+    if (runningState != -1) {
+        strcpy(cpu.pProgram[cpu.programCounter].stringArg, arg);
+    }
+}
+
+void schedule() {
+    if (runningState == -1 && readyStateSize > 0) {
+        runningState = readyState[0];
+        for (int i = 1; i < readyStateSize; ++i) {
+            readyState[i - 1] = readyState[i];
+        }
+        --readyStateSize;
+        pcbEntry[runningState].state = STATE_RUNNING;
+    }
+}
+
+void quantum() {
+    Instruction instruction;
+    printf("In quantum\n");
+    if (runningState == -1) {
+        printf("No processes are running\n");
+        ++timestamp;
+        return;
+    }
+    if (cpu.programCounter < programSize) {
+        instruction = cpu.pProgram[cpu.programCounter];
+        ++cpu.programCounter;
+    } else {
+        printf("End of program reached without E operation\n");
+        instruction.operation = 'E';
+    }
+    switch (instruction.operation) {
+        case 'S':
+            set(instruction.intArg);
+            printf("instruction S %d\n", instruction.intArg);
+            break;
+        case 'A':
+            add(instruction.intArg);
+            printf("instruction A %d\n", instruction.intArg);
+            break;
+        case 'D':
+            decrement(instruction.intArg);
+            break;
+        case 'B':
+            block();
+            break;
+        case 'E':
+            end();
+            break;
+        case 'F':
+            fork(instruction.intArg);
+            break;
+        case 'R':
+            replace(instruction.stringArg);
+            break;
+    }
+    ++timestamp;
+    schedule();
+}
+
+
 int main(int argc, char* argv[]){
 
     /*
