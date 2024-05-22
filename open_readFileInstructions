@@ -1,0 +1,20 @@
+#include <stdio.h>
+struct statements {
+  char type[100];
+  int number;
+};
+int main() {
+  FILE *ptr = fopen("abc.txt", "r");
+  if (ptr == NULL) {
+    printf("no such file.");
+    return 1;
+  }
+  struct statements instructionStatements;
+
+  while (fscanf(ptr, "%s %d", instructionStatements.type,
+                &instructionStatements.number) == 2) {
+    printf("%s %d\n", instructionStatements.type, instructionStatements.number);
+  }
+  fclose(ptr);
+  return 0;
+}
