@@ -4,10 +4,6 @@
 >
 > - Andy Nguyen
 > - Yeng Her
-<<<<<<< HEAD
->
->  Last Modified: April 11, 2024 8:06 PM PST
-=======
 > - Balkarandeep Singh
 
 >  Last Modified: April 26, 2024 8:06 PM PST
@@ -19,7 +15,7 @@
 
 My name is Yeng Her and I worked on the simulation Process
 
-My name is Balkarandeep Singh I worked on turnaround time and implmenting the clock.
+My name is Balkarandeep Singh I worked on turnaround time and implmenting the clock, the openfile and read instructions system as well.
 
 My name is Andy Nguyen I worked on implementing the GitHub organization and the command prompt
 
