@@ -1,6 +1,7 @@
 {
     "C_Cpp.errorSquiggles": "enabled",
     "files.associations": {
-        "simulation_process": "c"
+        "simulation_process": "c",
+        "*.tcc": "c"
     }
 }

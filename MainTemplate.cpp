@@ -612,9 +612,7 @@ int main(int argc, char *argv[])
         close(pipeDescriptors[1]);
         
         // Wait for the process manager to exit.
-        // WaitForSingleObject(&result);
-        sleep(result);
-        // wait(&result); // original line
+        wait(&result);
     }
     
     return result;

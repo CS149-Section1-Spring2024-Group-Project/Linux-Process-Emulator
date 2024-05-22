@@ -1,16 +1,10 @@
-#include <cctype> // for toupper()
-#include <cstdlib> // for EXIT_SUCCESS and EXIT_FAILURE
-#include <cstring> // for strerror()
-#include <cerrno> // for errno
-#include <deque> // for deque (used for ready and blocked queues)
-#include <fstream> // for ifstream (used for reading simulated programs)
-#include <iostream> // for cout, endl, and cin
-#include <sstream> // for stringstream (used for parsing simulated programs)
-
+#ifdef _WIN32
+#include <synchapi.h>
+#else
 #include <sys/wait.h> // for wait()
-
+#endif
 #include <unistd.h> // for pipe(), read(), write(), close(), fork(),  and _exit()
-#include <vector> // for vector (used for PCB table)
+#include <stdbool.h> // For booleans
 
 struct Instruction {
     char operation;
@@ -50,8 +44,8 @@ struct Cpu cpu;
 
 // For the states below, -1 indicates empty (since it is an invalid index).
 int runningState = -1;
-deque<int> readyState;
-deque<int> blockedState;
+// deque<int> readyState;
+// deque<int> blockedState;
 
 // In this implementation, we'll never explicitly clear PCB entries and the index in
 // the table will always be the process ID. These choices waste memory, but since this
@@ -70,7 +64,7 @@ bool createProgram(const string &filename, vector<Instruction> &program)
         cout << "Error opening file " << filename << endl;
         return false;
     }
-    
+
     while (file.good()) {
         string line;
         getline(file, line);
@@ -92,13 +86,13 @@ bool createProgram(const string &filename, vector<Instruction> &program)
                 case 'F': // Integer argument.
                     if (!(argStream >> instruction.intArg)) {
                         cout << filename << ":" << lineNum
-                        << " - Invalid integer argument " 
-                        << instruction.stringArg 
-                        << " for " 
-                        << instruction.operation 
-                        << " operation" 
+                        << " - Invalid integer argument "
+                        << instruction.stringArg
+                        << " for "
+                        << instruction.operation
+                        << " operation"
                         << endl;
-                        
+
                         file.close();
                         return false;
                     }
@@ -125,13 +119,13 @@ bool createProgram(const string &filename, vector<Instruction> &program)
                     file.close();
                     return false;
             }
-            
+
             program.push_back(instruction);
         }
 
         lineNum++;
     }
- 
+
     file.close();
     return true;
 }
@@ -210,7 +204,7 @@ void fork(int value)
 {
     // TODO: Implement
     // 1. Get a free PCB index (pcbTable.size())
-    // 2. Get the PCB entry for the current running process. 
+    // 2. Get the PCB entry for the current running process.
     // 3. Ensure the passed-in value is not out of bounds.
     // 4. Populate the PCB entry obtained in #1
     //     a. Set the process ID to the PCB index obtained in #1.
@@ -326,7 +320,7 @@ int runProcessManager(int fileDescriptor)
     pcbEntry[0].startTime = 0;
     pcbEntry[0].timeUsed = 0;
     runningState = 0;
-    
+
     cpu.pProgram = &(pcbEntry[0].program);
     cpu.programCounter = pcbEntry[0].programCounter;
     cpu.value = pcbEntry[0].value;
@@ -335,7 +329,7 @@ int runProcessManager(int fileDescriptor)
 
     // Loop until a 'T' is read, then terminate.
     char ch;
-    
+
     do {
         // Read a command character from the pipe.
         if (read(fileDescriptor, &ch, sizeof(ch)) != sizeof(ch)) {
@@ -345,7 +339,7 @@ int runProcessManager(int fileDescriptor)
 
         //TODO: Write a switch statement
         switch (ch) {
-            case 'Q': 
+            case 'Q':
                 quantum();
                 break;
 
@@ -377,15 +371,15 @@ int main(int argc, char *argv[])
 
     //USE fork() SYSTEM CALL to create the child process and save the value returned in processMgrPid variable
     if((processMgrPid = fork()) == -1) {
-        exit(1); /* FORK FAILED */ 
-    }              
-    
-    if (processMgrPid == 0) 
+        exit(1); /* FORK FAILED */
+    }
+
+    if (processMgrPid == 0)
     {
         // The process manager process is running.
         // Close the unused write end of the pipe for the process manager process.
         close(pipeDescriptors[1]);
-        
+
         // Run the process manager.
         result = runProcessManager(pipeDescriptors[0]);
 
@@ -394,18 +388,18 @@ int main(int argc, char *argv[])
         _exit(result);
     } else {
         // The commander process is running.
-        
+
         // Close the unused read end of the pipe for the commander process.
         close(pipeDescriptors[0]);
-        
+
         // Loop until a 'T' is written or until the pipe is broken.
-        do { 
+        do {
             cout << "Enter Q, P, U or T" << endl;
             cout << "$ ";
             cin >> ch ;
-            
+
             // Pass commands to the process manager process via the pipe.
-            if (write(pipeDescriptors[1], &ch, sizeof(ch)) != sizeof(ch)) 
+            if (write(pipeDescriptors[1], &ch, sizeof(ch)) != sizeof(ch))
             {
                 // Assume the child process exited, breaking the pipe.
                 break;
@@ -413,14 +407,14 @@ int main(int argc, char *argv[])
         } while (ch != 'T');
 
         write(pipeDescriptors[1], &ch, sizeof(ch));
-        
+
         // Close the write end of the pipe for the commander process (for cleanup purposes).
         close(pipeDescriptors[1]);
-        
+
         // Wait for the process manager to exit.
         // WaitForSingleObject(&result);
         wait(&result); // original line
     }
-    
+
     return result;
 }
