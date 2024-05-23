@@ -166,6 +166,7 @@ Cpu cpu;
 int runningState = -1;
 int readyState[0];
 int blockedState[0];
+
 // In this implementation, we'll never explicitly clear PCB entries and the index in
 // the table will always be the process ID. These choices waste memory, but since this
 // program is just a simulation it the easiest approach. Additionally, debugging is
@@ -174,38 +175,39 @@ double cumulativeTimeDiff = 0;
 int numTerminatedProcesses = 0;
 
 // Implements the S operation.
-void set(int value){
+void set(int value) {
     // TODO: Implement
     // 1. Set the CPU value to the passed-in value.
     cpu.value = value;
 }
 
 // Implements the A operation.
-void add(int value){
+void add(int value) {
     // TODO: Implement
     // 1. Add the passed-in value to the CPU value.
     cpu.value += value;
 }
 
 // Implements the D operation.
-void decrement(int value){
+void decrement(int value) {
     // TODO: Implement
     // 1. Subtract the integer value from the CPU value.
     cpu.value -= value;
 }
 
 // Performs scheduling.
-void schedule(){
+void schedule() {
     // TODO: Implement
     // 1. Return if there is still a processing running (runningState != -1). 
     //There is no need to schedule if a process is already running (at least until iLab 3)
-    if (runningState != -1){
+    if (runningState != -1)
+    {
         return;
     }
+
     // 2. Get a new process to run, if possible, from the ready queue.
-
-
-    if (getSize(readyState) > 0){
+    if (getSize(readyState) > 0)
+    {
         int pcbIndex = readyState[0];
         removeElement(readyState, 0);
     // 3. If we were able to get a new process to run:
@@ -222,8 +224,7 @@ void schedule(){
     }
 }
 // Implements the B operation.
-void block()
-{
+void block() {
     // TODO: Implement
     
     // 1. Add the PCB index of the running process (stored in runningState) to the blocked queue.
@@ -244,7 +245,7 @@ void block()
 }
 
 // Implements the E operation.
-void end(){
+void end() {
     // TODO: Implement
     // 1. Get the PCB entry of the running process.
     int pcbIndex = runningState;
@@ -260,7 +261,7 @@ void end(){
     // Note that a new process will be chosen to run later (via the Q command code calling the schedule function).
 }
 
-bool createProgram(const char* filename, Instruction* program){
+bool createProgram(const char* filename, Instruction* program) {
     /*
     ifstream file;
     int lineNum = 0;
@@ -338,7 +339,7 @@ bool createProgram(const char* filename, Instruction* program){
 }
 
 //Implements F
-void F(int value){
+void F(int value) {
     // TODO: Implement
     // 1. Get a free PCB index (pcbTable.size())
     int pcbIndex = sizeof(pcbTable) / sizeof(pcbTable[0]);
@@ -346,44 +347,55 @@ void F(int value){
     // 2. Get the PCB entry for the current running process.
     int runningIndex = runningState;
     PcbEntry parentProcess = pcbEntry[pcbIndex];
+
     // 3. Ensure the passed-in value is not out of bounds.
-    if (value < 0 || value >= getPcbEntrySize(pcbTable)){
+    if (value < 0 || value >= getPcbEntrySize(pcbTable))
+    {
         printf("Invalid value for fork operation");
         return;
     } else {
-    // 4. Populate the PCB entry obtained in #1
+        // 4. Populate the PCB entry obtained in #1
+        // a. Set the process ID to the PCB index obtained in #1.
+        pcbEntry[pcbIndex].processId = pcbIndex;
 
-    // a. Set the process ID to the PCB index obtained in #1.
-    pcbEntry[pcbIndex].processId = pcbIndex;
-    // b. Set the parent process ID to the process ID of the
-    pcbEntry[pcbIndex].parentProcessId = pcbEntry[runningIndex].processId;
+        // b. Set the parent process ID to the process ID of the
+        pcbEntry[pcbIndex].parentProcessId = pcbEntry[runningIndex].processId;
 
-    // running process (use the running process's PCB entry to get this).
-    pcbEntry[pcbIndex].program = pcbEntry[runningIndex].program;
-    // c. Set the program counter to the cpu program counter.
-    pcbEntry[pcbIndex].programCounter = cpu.programCounter;
-    // d. Set the value to the cpu value.
-    pcbEntry[pcbIndex].value = cpu.value;
-    // e. Set the priority to the same as the parent process's priority.
-    pcbEntry[pcbIndex].priority = pcbEntry[runningIndex].priority;
-    // f. Set the state to the ready state.
-    pcbEntry[pcbIndex].state = STATE_READY;
-    // g. Set the start time to the current timestamp
-    pcbEntry[pcbIndex].startTime = timestamp;
-    pcbEntry[pcbIndex].timeUsed = 0;
-    // 5. Add the pcb index to the ready queue.
-    addElement(readyState, getSize(readyState) - 1, pcbIndex);
-    // 6. Increment the cpu's program counter by the value read in #3
-    cpu.programCounter += value;
+        // running process (use the running process's PCB entry to get this).
+        pcbEntry[pcbIndex].program = pcbEntry[runningIndex].program;
+
+        // c. Set the program counter to the cpu program counter.
+        pcbEntry[pcbIndex].programCounter = cpu.programCounter;
+
+        // d. Set the value to the cpu value.
+        pcbEntry[pcbIndex].value = cpu.value;
+
+        // e. Set the priority to the same as the parent process's priority.
+        pcbEntry[pcbIndex].priority = pcbEntry[runningIndex].priority;
+
+        // f. Set the state to the ready state.
+        pcbEntry[pcbIndex].state = STATE_READY;
+
+        // g. Set the start time to the current timestamp
+        pcbEntry[pcbIndex].startTime = timestamp;
+        pcbEntry[pcbIndex].timeUsed = 0;
+
+        // 5. Add the pcb index to the ready queue.
+        addElement(readyState, getSize(readyState) - 1, pcbIndex);
+
+        // 6. Increment the cpu's program counter by the value read in #3
+        cpu.programCounter += value;
     }
 }
 // Implements the R operation.
-void replace(char* argument){
+void replace(char* argument) {
     // TODO: Implement
     // 1. Clear the CPU's program (cpu.pProgram->clear()).
     printf("Error reading program file %s", argument);
+
     // 2. Use createProgram() to read in the filename specified by
     // argument into the CPU (*cpu.pProgram)
+
     // a. Consider what to do if createProgram fails. I printed an
     // error, incremented the cpu program counter and then returned. Note
     // that createProgram can fail if the file could not be opened or did not exist.
@@ -395,11 +407,12 @@ void replace(char* argument){
     }
     // 3. Set the program counter to 0.
     cpu.programCounter = 0;
-
 }
+
 // Implements the Q command.
-void quantum(){
+void quantum() {
     Instruction instruction;
+
     printf("In quantum");
     if (runningState == -1) {
         printf("No processes are running");
@@ -415,6 +428,7 @@ void quantum(){
         printf("End of program reached without E operation");
         instruction.operation = 'E';
     }
+
     switch (instruction.operation) {
     case 'S':
         set(instruction.intArg);
@@ -458,17 +472,22 @@ void unblock() {
         int pcbIndex = blockedState[0];
         removeElement(blockedState, 0);
     
-    //b. Add the process to the ready queue.
+        //b. Add the process to the ready queue.
         addElement(readyState, getSize(readyState) - 1, pcbIndex);
-    // c. Change the state of the process to ready (update its PCB entry).
+
+        // c. Change the state of the process to ready (update its PCB entry).
         pcbEntry[pcbIndex].state = STATE_READY;
-    // 2. Call the schedule() function to give an unblocked process a
-    // chance to run (if possible).
+
+        // 2. Call the schedule() function to give an unblocked process a
+        // chance to run (if possible).
     }
+
     schedule();
 }
+
 // Implements the P command.
-void print(){
+void print() 
+{
     printf("****************************************************************\n");
     printf("The current system state is as follows:\n");
     printf("****************************************************************\n\n");
@@ -532,7 +551,8 @@ void avgTTime() {
 // Function that implements the process manager.
 int runProcessManager(int fileDescriptor) {
     //  Attempt to create the init process.
-    if (!createProgram("init", pcbEntry[0].program)){
+    if (!createProgram("init", pcbEntry[0].program))
+    {
         return EXIT_FAILURE;
     }
 
@@ -595,7 +615,6 @@ int runProcessManager(int fileDescriptor) {
 }
 
 int main(int argc, char *argv[]) {
-
     /*
         Command Prompt
     */
@@ -643,6 +662,10 @@ int main(int argc, char *argv[]) {
 
         // Variable for user inputs
         char userInput;
+        char fileInput[255];
+        
+        printf("Enter file name: ");
+        scanf(" %c", &fileInput); 
 
         // Loop until a 'T' is written or until the pipe is broken.
         do {
@@ -666,5 +689,6 @@ int main(int argc, char *argv[]) {
         // Wait for the process manager to exit.
         wait(&result);
     }
+
     return result;
 }
